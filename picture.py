@@ -15,5 +15,8 @@ for y in range(16):
 
 framebuffer.present()
 
-while True:
+try:
+	while True:
+		pass
+except KeyboardInterrupt:
 	pass

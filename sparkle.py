@@ -15,12 +15,16 @@ colors = [
 current_color = 0
 
 framebuffer = DisplayDriver()
-while True:
-	framebuffer.fade()
-	for y in range(16):
-		for x in range(16):
-			if int(random.uniform(0,500)) == 0:
-				framebuffer.set_pixel(x, y, colors[current_color])
-				current_color = (current_color + 1) % len(colors)
-	framebuffer.present()
-	time.sleep(20.0 / 1000.0) # 100 ms
+
+try:
+	while True:
+		framebuffer.fade()
+		for y in range(16):
+			for x in range(16):
+				if int(random.uniform(0,500)) == 0:
+					framebuffer.set_pixel(x, y, colors[current_color])
+					current_color = (current_color + 1) % len(colors)
+		framebuffer.present()
+		time.sleep(20.0 / 1000.0) # 100 ms
+except KeyboardInterrupt:
+	pass
