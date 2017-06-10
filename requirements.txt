@@ -1,4 +1,5 @@
-spi
+-e git://github.com/dunkelstern/python-spi.git#egg=spi
 flask
 pillow
 rpio
+numpy

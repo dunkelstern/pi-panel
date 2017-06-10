@@ -2,8 +2,9 @@ import random
 import RPIO
 from spi import *
 import time
+import numpy as np
 
-from .color import Color
+from .color import Color, hsv_to_rgb
 	
 
 class DisplayDriver(object):
@@ -29,12 +30,12 @@ class DisplayDriver(object):
 		self.spi = SPI('/dev/spidev0.0')
 		self.spi.mode = SPI.MODE_0
 		self.spi.bits_per_word = 8
-		self.spi.speed = 450000
+		self.spi.speed = 500000
 
 		RPIO.setmode(RPIO.BOARD)
 		RPIO.setup(11, RPIO.OUT)
 
-		self.frame_buffer = []
+		self.frame_buffer = np.zeros((self.width, self.height, 3), dtype=np.uint8)
 		self.clear()
 		self.reset()
 		self.present()
@@ -44,7 +45,7 @@ class DisplayDriver(object):
 		for i in range(64):
 			self.fade()
 			self.present()
-			time.sleep(20.0 / 1000.0) # 20 ms
+			time.sleep(10.0 / 1000.0) # 20 ms
 		RPIO.cleanup()
 	
 	def reset(self):
@@ -57,7 +58,7 @@ class DisplayDriver(object):
 	
 	def clear(self):
 		""" Clear the matrix to black color """
-		self.frame_buffer = [0 for _ in range(self.width*self.height*3)]
+		self.frame_buffer = np.zeros((self.width, self.height, 3), dtype=np.uint8)
 
 	def get_pixel(self, x, y):
 		"""
@@ -73,8 +74,7 @@ class DisplayDriver(object):
 			raise ValueError('x coordinate has to be >= 0 and < width ({})'.format(self.width))
 		if y > self.height or y < 0:
 			raise ValueError('y coordinate has to be >= 0 and < height ({})'.format(self.height))
-		index = (y * self.width + x) * 3
-		return Color.from_rgb(self.frame_buffer[index], self.frame_buffer[index + 1], self.frame_buffer[index + 2])
+		return Color.from_rgb(*tuple(self.frame_buffer[x][y]))
 
 	def set_pixel(self, x, y, color):
 		"""
@@ -86,15 +86,49 @@ class DisplayDriver(object):
 		:raises ValueError: if the coordinate is out of bounds
 		"""
 
-		if x > self.width:
-			raise ValueError('x coordinate has to be smaller than width ({})'.format(self.width))
-		if y > self.height:
-			raise ValueError('y coordinate has to be smaller than height ({})'.format(self.height))
+		if x > self.width or x < 0:
+			raise ValueError('x coordinate has to be >= 0 and < width ({})'.format(self.width))
+		if y > self.height or y < 0:
+			raise ValueError('y coordinate has to be >= 0 and < height ({})'.format(self.height))
 		index = (y * self.width + x) * 3
 		c = color.rgb
-		self.frame_buffer[index] = c[0]
-		self.frame_buffer[index + 1] = c[1]
-		self.frame_buffer[index + 2] = c[2]
+		self.frame_buffer[x][y] = c
+	
+	def set_pixel_rgb(self, x, y, r, g, b):
+		"""
+		Set pixel color of pixel at given x and y coordinates
+		
+		:param int x: X coordinate of pixel to set
+		:param int y: Y coordinate of pixel to set
+		:param int r: red component 0-255
+		:param int g: green component 0-255
+		:param int b: blue component 0-255
+		:raises ValueError: if the coordinate is out of bounds
+		"""
+
+		if x > self.width or x < 0:
+			raise ValueError('x coordinate has to be >= 0 and < width ({})'.format(self.width))
+		if y > self.height or y < 0:
+			raise ValueError('y coordinate has to be >= 0 and < height ({})'.format(self.height))
+		self.frame_buffer[x][y] = (r, g, b)	
+
+	def set_pixel_hsv(self, x, y, h, s, v):
+		"""
+		Set pixel color of pixel at given x and y coordinates
+		
+		:param int x: X coordinate of pixel to set
+		:param int y: Y coordinate of pixel to set
+		:param int h: hue component 0-360
+		:param int s: saturation component 0.0-1.0
+		:param int v: value component 0.0-1.0
+		:raises ValueError: if the coordinate is out of bounds
+		"""
+
+		if x > self.width or x < 0:
+			raise ValueError('x coordinate has to be >= 0 and < width ({})'.format(self.width))
+		if y > self.height or y < 0:
+			raise ValueError('y coordinate has to be >= 0 and < height ({})'.format(self.height))
+		self.frame_buffer[x][y] = hsv_to_rgb(h, s, v)
 
 	def fill(self, color):
 		"""
@@ -103,12 +137,7 @@ class DisplayDriver(object):
 		:param Color color: the color to fill
 		"""
 
-		c = color.rgb
-		for i in range(self.width * self.height):
-			index = i * 3
-			self.frame_buffer[index] = c[0]
-			self.frame_buffer[index + 1] = c[1]
-			self.frame_buffer[index + 2] = c[2]
+		self.frame_buffer = np.repeat(color.rgb, (self.width, self.height))
 	
 	def fade(self, speed=1.2):
 		"""
@@ -118,12 +147,11 @@ class DisplayDriver(object):
 			values above 1.0 fade to black, below 1.0 fade to white
 		"""
 
-		for i in range(self.width * self.height * 3):
-			self.frame_buffer[i] = int(self.frame_buffer[i] / speed)
+		self.frame_buffer /= speed
 
 	def present(self):
 		""" Present the framebuffer """
-		self.spi.write(self.frame_buffer)
+		self.spi.write(np.ravel(self.frame_buffer))
 
 if __name__ == "__main__":
 	driver = DisplayDriver()
