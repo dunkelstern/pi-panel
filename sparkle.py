@@ -3,28 +3,38 @@ import time
 
 from display import Color, DisplayDriver
 
+ms = lambda: int(round(time.time() * 1000))
+
 colors = [
-	Color.from_rgb(255 , 0, 0),
-	Color.from_rgb(255 , 128, 0),
-	Color.from_rgb(255, 255, 0),
-	Color.from_rgb(255, 255, 255),
-	Color.from_rgb(0, 255, 255),
-	Color.from_rgb(0, 0, 255),
-	Color.from_rgb(0, 255, 0)
+	(255 , 0, 0),
+	(255 , 128, 0),
+	(255, 255, 0),
+	(255, 255, 255),
+	(0, 255, 255),
+	(0, 0, 255),
+	(0, 255, 0)
 ]
 current_color = 0
 
 framebuffer = DisplayDriver()
 
+target_fps = 30
+delay = ms()
 try:
 	while True:
+		start = ms()
 		framebuffer.fade()
-		for y in range(16):
-			for x in range(16):
-				if int(random.uniform(0,500)) == 0:
-					framebuffer.set_pixel(x, y, colors[current_color])
-					current_color = (current_color + 1) % len(colors)
+		x, y = random.uniform(0,16), random.uniform(0,16)
+		framebuffer.set_pixel_rgb(x, y, *colors[current_color])
+		current_color = (current_color + 1) % len(colors)
 		framebuffer.present()
-		time.sleep(20.0 / 1000.0) # 100 ms
+		end = ms()
+
+		if (end - start < 1000.0 / target_fps):
+			time.sleep((1000.0 / target_fps - (end - start)) / 1000.0)
+		if (ms() - delay) >= 1000:
+			delay = ms()
+			print('Current fps: {}'.format(1000 / (ms() - start)))
+
 except KeyboardInterrupt:
 	pass
