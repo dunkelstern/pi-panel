@@ -14,8 +14,6 @@
 #define LED_MATRIX_WIDTH 16
 #define LED_MATRIX_HEIGHT 16
 
-#define RESET_INTERRUPT PCIE1
-
 volatile uint16_t fb_pos = 0;
 volatile uint8_t byte_pos = 0;
 volatile int8_t fb_write_dir = 1;
@@ -23,7 +21,6 @@ volatile uint8_t ready = 0;
 
 #include "led_driver.h"
 
-void reset(void);
 int main(void);
 
 int main(void) {
@@ -35,7 +32,8 @@ int main(void) {
 	SPCR |= ((1 << SPE) | (1 << SPIE)); // enable SPI and SPI interrupt
 
 	// enable reset pin interrupt
-	PCICR |= (1 << RESET_INTERRUPT);
+	EICRA |= (1 << ISC10) | (1 << ISC11);
+	EIMSK |= (1 << INT1);
 
 	// Initialize framebuffer with a default pattern
 	for(uint8_t x = 0; x < LED_MATRIX_WIDTH; x++) {
@@ -103,7 +101,7 @@ ISR (SPI_STC_vect) {
 }
 
 // reset pin interrupt
-ISR(PCINT1_vect) {
+ISR(INT1_vect) {
 	cli();
 	ready = 0;
 	fb_pos = 0;
